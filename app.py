@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA E DESIGN SYSTEM ---
 st.set_page_config(
-    page_title="IMDb Intelligence v2",
+    page_title="Análise de Filmes utilizando o dataset IMDb",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -135,7 +135,7 @@ selected_genres_pt = [genre_translation.get(g, g) for g in selected_genres]
 
 
 # --- 4. CABEÇALHO ---
-st.title(f"📊 Dashboard Analítico de Cinema ({year_range[0]}-{year_range[1]})")
+st.title(f"📊 Dashboard de Filmes utilizando o dataset IMDb ({year_range[0]}-{year_range[1]})")
 
 # KPIs Globais
 k1, k2, k3, k4, k5 = st.columns(5)
@@ -534,6 +534,3 @@ with tab5:
             st.markdown(f"**Filme de Ouro:** {row['top_movie_title']}")
             st.caption(f"Ano: {int(row['top_movie_year'])} | Nota: {row['top_movie_rating']}")
             st.progress(row['mean_rating']/10)
-
-st.markdown("---")
-st.caption("© 2025 IMDb Intelligence Project")
