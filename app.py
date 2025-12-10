@@ -149,13 +149,13 @@ st.markdown("---")
 
 # --- 5. NAVEGAÇÃO ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Evolução Temporal", "🎭 Raio-X Gêneros", "⏱️ Análise Duração", "🌍 Mapa Mundi", "🌟 Hall da Fama"
+    "📈 Evolução Temporal", "🎭 Gêneros", "⏱️ Análise de Duração", "🌍 Mapa Mundi", "🌟 Hall da Fama"
 ])
 
 
 # === ABA 1: EVOLUÇÃO TEMPORAL ===
 with tab1:
-    st.subheader("1. A Corrida dos Gêneros (Bump Chart)")
+    st.subheader("êneros Mais Populares ao Longo das écadas")
     st.caption("Comparando a evolução por quantidade de filmes vs qualidade média.")
 
     col_pop, col_qual = st.columns(2)
@@ -192,7 +192,7 @@ with tab1:
 
     col_stats1, col_stats2 = st.columns(2)
     with col_stats1:
-        st.subheader("2. Distribuição das Notas")
+        st.subheader("Distribuição das Notas")
         # Histograma
         fig_hist = px.histogram(df_filtered, x="averageRating", nbins=20, 
                                 title="Curva de Gauss (Frequência de Notas)",
@@ -202,7 +202,7 @@ with tab1:
         st.plotly_chart(fig_hist, use_container_width=True)
     
     with col_stats2:
-        st.subheader("3. Volume x Qualidade (Anual)")
+        st.subheader("Volume x Qualidade (Anual)")
         # Linha dupla
         df_year = df_filtered.groupby('startYear').agg({'averageRating':'mean', 'tconst':'count'}).reset_index()
         fig_dual = go.Figure()
@@ -327,8 +327,8 @@ with tab2:
     ).reset_index()
 
     # --- BLOCO 1 ---
-    st.subheader("1. Quadrante Mágico: Popularidade vs Qualidade")
-    st.caption("Onde cada gênero se posiciona? Tamanho da bolha = Volume de Produção")
+    st.subheader(" Popularidade vs Prestígio")
+    st.caption("Onde cada gênero se posiciona? Tamanho da bolha representa o Volume de Produção")
 
     fig_bubble = px.scatter(
         genre_stats, x="votes", y="rating", 
@@ -346,7 +346,7 @@ with tab2:
     st.plotly_chart(fig_bubble, use_container_width=True)
 
     # --- BLOCO 2 ---
-    st.subheader("2. Grid de Volume (Small Multiples)")
+    st.subheader("Evolução da Producao por Gênero ao Longo do Tempo")
     df_genre_year = df_filtered.groupby(['genre', 'decade']).size().reset_index(name='count')
 
     fig_sm = px.area(
@@ -395,7 +395,7 @@ with tab3:
     row1_1, row1_2 = st.columns(2)
 
     with row1_1:
-        st.subheader("1. Evolução do Formato")
+        st.subheader("Evolução do Formato")
         
         # Cálculo de porcentagem
         df_dur = df_filtered.groupby(['decade', 'duration_class']).size().reset_index(name='count')
@@ -411,7 +411,7 @@ with tab3:
         st.plotly_chart(fig_stack, use_container_width=True)
 
     with row1_2:
-        st.subheader("2. Engajamento (Votos)")
+        st.subheader("Engajamento (Votos)")
 
         df_eng = df_filtered.groupby('duration_class')['numVotes'].mean().reset_index()
 
@@ -428,7 +428,7 @@ with tab3:
     # ------------------------
     # 2.5 Nota Média (Violino)
     # ------------------------
-    st.subheader("2.5 Distribuição de Notas (Violin Plot)")
+    st.subheader("Distribuição de Notas por Duração")
 
     fig_rating_dur = px.violin(
         df_filtered, 
@@ -446,9 +446,9 @@ with tab3:
     st.plotly_chart(fig_rating_dur, use_container_width=True)
 
     # ------------------------
-    # 3. Scatter (Duração vs Nota)
+    # Scatter (Duração vs Nota)
     # ------------------------
-    st.subheader("3. Dispersão Detalhada")
+    st.subheader("Dispersão Detalhada")
 
     # Amostragem para performance
     fig_scatter = px.scatter(
