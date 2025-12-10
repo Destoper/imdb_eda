@@ -11,6 +11,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Dicionário de Tradução
+genre_translation = {
+    "Action": "Ação",
+    "Adventure": "Aventura",
+    "Animation": "Animação",
+    "Biography": "Biografia",
+    "Comedy": "Comédia",
+    "Crime": "Crime",
+    "Documentary": "Documentário",
+    "Drama": "Drama",
+    "Family": "Família",
+    "Fantasy": "Fantasia",
+    "Film-Noir": "Noir",
+    "History": "História",
+    "Horror": "Terror",
+    "Music": "Música",
+    "Musical": "Musical",
+    "Mystery": "Mistério",
+    "Romance": "Romance",
+    "Sci-Fi": "Ficção Científica",
+    "Sport": "Esporte",
+    "Thriller": "Suspense",
+    "War": "Guerra",
+    "Western": "Faroeste"
+}
+
 # Paleta de Cores "Dark Cinema"
 COLOR_BG = "#0e1117"
 COLOR_ACCENT = "#f5c518"  # Amarelo IMDb
@@ -59,22 +85,54 @@ except FileNotFoundError:
 with st.sidebar:
     st.title("🎬 Painel de Controle")
     st.markdown("---")
-    
-    # Filtros
+
     min_year, max_year = int(df['startYear'].min()), int(df['startYear'].max())
     year_range = st.slider("📅 Período", min_year, max_year, (1960, 2023))
-    
+
     all_genres = sorted(df['genre'].unique())
-    selected_genres = st.multiselect("🎭 Géneros", all_genres, default=['Action', 'Drama', 'Sci-Fi', 'Horror', 'Romance', 'Comedy'])
+    
+    if 'selected_genres_state' not in st.session_state:
+        st.session_state['selected_genres_state'] = ['Action', 'Drama', 'Sci-Fi', 'Horror', 'Romance', 'Comedy']
+
+    # Funções de Callback
+    def select_all():
+        st.session_state['selected_genres_state'] = all_genres
+    
+    def deselect_all():
+        st.session_state['selected_genres_state'] = []
+
+    st.write("🎭 **Filtro de Gêneros**")
+    
+    # Botões lado a lado
+    col_b1, col_b2 = st.columns(2)
+    with col_b1:
+        st.button("✅ Todos", on_click=select_all, help="Selecionar todos os gêneros")
+    with col_b2:
+        st.button("❌ Limpar", on_click=deselect_all, help="Remover todas as seleções")
+
+    selected_genres = st.multiselect(
+        "Selecione:", 
+        all_genres, 
+        key='selected_genres_state' 
+    )
     
     st.markdown("---")
-    st.info("💡 Dica: Use os filtros acima para refinar a análise em todas as abas.")
+    st.info("💡 Dica: Use os botões acima para alternar rapidamente entre ver tudo ou limpar.")
 
-# Aplicação dos Filtros
+if not selected_genres:
+    st.warning("⚠️ Por favor, selecione pelo menos um gênero no menu lateral.")
+    st.stop()
+
 df_filtered = df[
     (df['startYear'].between(year_range[0], year_range[1])) & 
     (df['genre'].isin(selected_genres))
-]
+].copy()
+
+# --- APLICAR TRADUÇÃO NOS DADOS FILTRADOS ---
+df_filtered['genre'] = df_filtered['genre'].map(genre_translation).fillna(df_filtered['genre'])
+
+selected_genres_pt = [genre_translation.get(g, g) for g in selected_genres]
+
 
 # --- 4. CABEÇALHO ---
 st.title(f"📊 Dashboard Analítico de Cinema ({year_range[0]}-{year_range[1]})")
@@ -94,87 +152,169 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Evolução Temporal", "🎭 Raio-X Gêneros", "⏱️ Análise Duração", "🌍 Mapa Mundi", "🌟 Hall da Fama"
 ])
 
-# === ABA 1: EVOLUÇÃO TEMPORAL ===
+
 # === ABA 1: EVOLUÇÃO TEMPORAL ===
 with tab1:
-    col1, col2 = st.columns([2, 1])
+    st.subheader("1. A Corrida dos Gêneros (Bump Chart)")
+    st.caption("Comparando a evolução por quantidade de filmes vs qualidade média.")
+
+    col_pop, col_qual = st.columns(2)
     
-    with col1:
-        st.subheader("1. Corrida dos Gêneros (Bump Chart)")
-        # Bump Chart
-        df_rank = df_filtered.groupby(['decade', 'genre']).size().reset_index(name='count')
-        df_rank['rank'] = df_rank.groupby('decade')['count'].rank(method='first', ascending=False)
-        df_rank = df_rank[df_rank['rank'] <= 10] 
+    # GRÁFICO 1: RANKING DE POPULARIDADE (VOLUME)
+    with col_pop:
+        st.markdown("##### 🍿 Ranking por Popularidade (Volume)")
+        df_rank_pop = df_filtered.groupby(['decade', 'genre']).size().reset_index(name='count')
+        # Rankear (Maior volume = Rank 1)
+        df_rank_pop['rank'] = df_rank_pop.groupby('decade')['count'].rank(method='first', ascending=False)
+        df_rank_pop = df_rank_pop[df_rank_pop['rank'] <= 10] 
         
-        fig_bump = px.line(df_rank, x='decade', y='rank', color='genre', 
+        fig_bump_pop = px.line(df_rank_pop, x='decade', y='rank', color='genre', 
                            markers=True, height=450, template=THEME_PLOTLY)
-        fig_bump.update_yaxes(autorange="reversed", title="Ranking de Popularidade")
-        st.plotly_chart(fig_bump, use_container_width=True)
+        fig_bump_pop.update_xaxes(title="Década")
+        fig_bump_pop.update_yaxes(title="Ranking (1º = Mais Produzido)", autorange="reversed")
+        st.plotly_chart(fig_bump_pop, use_container_width=True)
 
-
+    # GRÁFICO 2: RANKING DE QUALIDADE (NOTA)
+    with col_qual:
+        st.markdown("##### ⭐ Ranking por Qualidade (Nota Média)")
+        df_rank_qual = df_filtered.groupby(['decade', 'genre'])['averageRating'].mean().reset_index()
+        # Rankear (Maior nota = Rank 1)
+        df_rank_qual['rank'] = df_rank_qual.groupby('decade')['averageRating'].rank(method='first', ascending=False)
+        df_rank_qual = df_rank_qual[df_rank_qual['rank'] <= 10]
         
-    st.subheader("3. Volume x Qualidade")
-    # Linha dupla
-    df_year = df_filtered.groupby('startYear').agg({'averageRating':'mean', 'tconst':'count'}).reset_index()
-    fig_dual = go.Figure()
-    fig_dual.add_trace(go.Bar(x=df_year['startYear'], y=df_year['tconst'], name='Qtd Filmes', marker_color='#333'))
-    fig_dual.add_trace(go.Scatter(x=df_year['startYear'], y=df_year['averageRating'], name='Nota Média', yaxis='y2', line=dict(color=COLOR_ACCENT, width=3)))
-    fig_dual.update_layout(template=THEME_PLOTLY, yaxis2=dict(overlaying='y', side='right', range=[5,8]), height=300, showlegend=False)
-    st.plotly_chart(fig_dual, use_container_width=True)
+        fig_bump_qual = px.line(df_rank_qual, x='decade', y='rank', color='genre', 
+                           markers=True, height=450, template=THEME_PLOTLY)
+        fig_bump_qual.update_xaxes(title="Década")
+        fig_bump_qual.update_yaxes(title="Ranking (1º = Maior Nota)", autorange="reversed")
+        st.plotly_chart(fig_bump_qual, use_container_width=True)
 
-    # --- NOVA SEÇÃO: ÍCONES POPULARES ---
+    st.divider()
+
+    col_stats1, col_stats2 = st.columns(2)
+    with col_stats1:
+        st.subheader("2. Distribuição das Notas")
+        # Histograma
+        fig_hist = px.histogram(df_filtered, x="averageRating", nbins=20, 
+                                title="Curva de Gauss (Frequência de Notas)",
+                                labels={'averageRating': 'Nota IMDb'},
+                                color_discrete_sequence=[COLOR_ACCENT], template=THEME_PLOTLY)
+        fig_hist.update_layout(bargap=0.1)
+        st.plotly_chart(fig_hist, use_container_width=True)
+    
+    with col_stats2:
+        st.subheader("3. Volume x Qualidade (Anual)")
+        # Linha dupla
+        df_year = df_filtered.groupby('startYear').agg({'averageRating':'mean', 'tconst':'count'}).reset_index()
+        fig_dual = go.Figure()
+        fig_dual.add_trace(go.Bar(x=df_year['startYear'], y=df_year['tconst'], name='Qtd Filmes', marker_color='#333'))
+        fig_dual.add_trace(go.Scatter(x=df_year['startYear'], y=df_year['averageRating'], name='Nota Média', yaxis='y2', line=dict(color=COLOR_ACCENT, width=3)))
+        fig_dual.update_layout(template=THEME_PLOTLY, yaxis2=dict(overlaying='y', side='right', range=[5,8]), height=400, showlegend=True, legend=dict(orientation="h", y=1.1))
+        st.plotly_chart(fig_dual, use_container_width=True)
+
     st.markdown("---")
-    st.subheader("🏆 Os Ícones da Década (Mais Populares)")
     
-    # 1. Identificar décadas presentes no filtro atual
+    # --- CABEÇALHO COM CONTROLE ---
+    c_head1, c_head2 = st.columns([2, 1])
+    with c_head1:
+        st.subheader("🏆 Galeria: Os Ícones da Década")
+        st.caption(f"Filtrando por gêneros: {', '.join(selected_genres_pt)}")
+    with c_head2:
+        # SELETOR DE CRITÉRIO
+        ranking_metric = st.radio("Critério do Pódio:", 
+                                  ["Popularidade (Votos)", "Prestígio (Nota Média)"], 
+                                  horizontal=True)
+
+    # --- LÓGICA DE DADOS ---
+    
+    # Define qual coluna usar para ordenar
+    sort_col = 'total_votes' if "Votos" in ranking_metric else 'mean_rating'
+    
+    # 1. Mapear Gêneros dos Filmes {Titulo: [Lista Traduzida]}
+    # Nota: Precisamos traduzir os gêneros no mapa também para bater com selected_genres_pt
+    def translate_list(genre_str):
+        if pd.isna(genre_str): return []
+        return [genre_translation.get(g, g) for g in str(genre_str).split(',')]
+
+    # Criar mapa usando o CSV original (mas aplicando tradução)
+    df_temp_map = df.copy() # Usando df original para ter todos os filmes
+    df_temp_map['genres_list'] = df_temp_map['genre'].apply(translate_list)
+    movie_genre_map = df_temp_map.set_index('primaryTitle')['genres_list'].to_dict()
+
+    # 2. Função de Filtro Dinâmica
+    def get_winner(decade, role, genre_list_pt, sort_by):
+        # Filtra pessoas da década e função
+        candidates = df_crew[(df_crew['decade'] == decade) & (df_crew['category'] == role)].copy()
+        
+        # Filtra: O "Top Movie" TEM que ter um dos gêneros selecionados (em PT)
+        def has_genre(movie_title):
+            m_genres = movie_genre_map.get(movie_title, [])
+            return not set(m_genres).isdisjoint(genre_list_pt)
+        
+        candidates = candidates[candidates['top_movie_title'].apply(has_genre)]
+        
+        # Ordena dinamicamente baseada na escolha do usuário
+        if not candidates.empty:
+            return candidates.sort_values(by=sort_by, ascending=False).iloc[0]
+        return None
+
+    # --- RENDERIZAÇÃO VISUAL (CARDS) ---
     active_decades = sorted(df_filtered['decade'].unique(), reverse=True)
-    
-    # 2. Criar um dicionário rápido para buscar gêneros pelo TÍTULO do filme
-    # (Agrupamos para pegar todos os gêneros únicos de um filme numa string só)
-    movie_genre_map = df.groupby('primaryTitle')['genre'].apply(lambda x: ", ".join(set(x))).to_dict()
 
-    # 3. Loop por década
     for dec in active_decades:
-        with st.expander(f"🌟 Década de {dec}", expanded=True):
+        # Busca vencedores com o critério escolhido (sort_col)
+        winner_dir = get_winner(dec, 'director', selected_genres_pt, sort_col)
+        winner_act = get_winner(dec, 'actor', selected_genres_pt, sort_col)
+        winner_actress = get_winner(dec, 'actress', selected_genres_pt, sort_col)
+        
+        if winner_dir is not None or winner_act is not None or winner_actress is not None:
             
-            # Filtrar crew desta década
-            crew_dec = df_crew[df_crew['decade'] == dec]
+            st.markdown(f"### 🗓️ Anos {dec}")
+            c1, c2, c3 = st.columns(3)
             
-            if crew_dec.empty:
-                st.write("Dados insuficientes para esta década.")
-            else:
-                c_dir, c_act, c_actress = st.columns(3)
-                
-                # Função auxiliar para pegar o TOP 1 e montar o card
-                def show_top_star(column, role, label, icon):
-                    # Pega o mais popular (maior total de votos)
-                    top = crew_dec[crew_dec['category'] == role].sort_values(by='total_votes', ascending=False).head(1)
-                    
-                    with column:
-                        if not top.empty:
-                            row = top.iloc[0]
-                            st.markdown(f"**{icon} {label}**")
-                            st.subheader(row['primaryName'])
-                            st.caption(f"Total Votos: {(row['total_votes']/1e6):.1f}M")
-                            
-                            # Busca gêneros
-                            movie_title = row['top_movie_title']
-                            genres = movie_genre_map.get(movie_title, "Gênero N/A")
-                            
-                            st.markdown(f"""
-                                <div style='background-color: #262730; padding: 10px; border-radius: 5px; font-size: 0.9em;'>
-                                🎬 <b>Hit:</b> {movie_title}<br>
-                                🎭 <span style='color: #888'>{genres}</span><br>
-                                ⭐ Nota: {row['top_movie_rating']}
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.write("N/A")
+            def draw_card(col, row, role_icon, role_name):
+                with col:
+                    if row is not None:
+                        # Busca gêneros reais
+                        genres_real = movie_genre_map.get(row['top_movie_title'], ["N/A"])
+                        genres_str = " • ".join(genres_real[:2])
+                        
+                        # Cores dinâmicas para destacar o vencedor
+                        color_vote = "#f5c518" if "Votos" in ranking_metric else "#ddd" # Amarelo se for Votos
+                        color_rate = "#f5c518" if "Nota" in ranking_metric else "#ddd"  # Amarelo se for Nota
+                        
+                        # Card HTML
+                        st.markdown(f"""
+                        <div style="background-color: #1f2129; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);">
+                            <div style="color: #888; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px;">
+                                {role_icon} {role_name}
+                            </div>
+                            <div style="font-size: 1.2em; font-weight: bold; color: #fff; margin: 5px 0;">
+                                {row['primaryName']}
+                            </div>
+                            <div style="margin-top: 5px; font-size: 0.9em; color: #aaa;">
+                                🎬 <b>{row['top_movie_title']}</b>
+                            </div>
+                            <div style="font-size: 0.75em; color: #666; margin-bottom: 10px;">
+                                {genres_str}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9em; background-color: #0e1117; padding: 8px; border-radius: 5px;">
+                                <span style="color: {color_rate}; font-weight: bold;">
+                                    ⭐ {row['mean_rating']:.1f} <span style="font-size:0.7em; color:#555">(Média)</span>
+                                </span>
+                                <span style="color: {color_vote}; font-weight: bold;">
+                                    🗳️ {(row['total_votes']/1e6):.1f}M
+                                </span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='padding: 20px; text-align: center; color: #444; border: 1px dashed #333; border-radius: 10px;'> - </div>", unsafe_allow_html=True)
 
-                # Exibir as 3 categorias
-                show_top_star(c_dir, 'director', 'Diretor(a)', '🎥')
-                show_top_star(c_act, 'actor', 'Ator', '🕴️')
-                show_top_star(c_actress, 'actress', 'Atriz', '💃')
+            draw_card(c1, winner_dir, "🎥", "Direção")
+            draw_card(c2, winner_act, "🕴️", "Ator")
+            draw_card(c3, winner_actress, "💃", "Atriz")
+            
+            st.divider()
 
 # === ABA 2: RAIO-X GÊNEROS ===
 with tab2:
@@ -220,7 +360,7 @@ with tab2:
 
     st.plotly_chart(fig_sm, use_container_width=True)
 
-    # Tabela detalhada
+    # Tabela
     with st.expander("Ver Dados Detalhados por Gênero"):
         st.dataframe(
             genre_stats.sort_values(by='count', ascending=False)
@@ -230,44 +370,97 @@ with tab2:
 
 # === ABA 3: DURAÇÃO ===
 with tab3:
-    # Categorizar
     def cat_dur(x):
         if x < 90: return 'Curto (<90m)'
         elif x <= 120: return 'Padrão (90-120m)'
         elif x <= 150: return 'Longo (120-150m)'
         else: return 'Épico (>150m)'
     
+    df_filtered = df_filtered.copy()
     df_filtered['duration_class'] = df_filtered['runtimeMinutes'].apply(cat_dur)
+
     order = ['Curto (<90m)', 'Padrão (90-120m)', 'Longo (120-150m)', 'Épico (>150m)']
-    
+
+    palette = px.colors.sequential.Plasma
+    color_map = {
+        'Curto (<90m)': palette[1],
+        'Padrão (90-120m)': palette[3],
+        'Longo (120-150m)': palette[5],
+        'Épico (>150m)': palette[7]
+    }
+
+    # ------------------------
+    # 1º LINHA: Evolução + Engajamento
+    # ------------------------
     row1_1, row1_2 = st.columns(2)
-    
+
     with row1_1:
         st.subheader("1. Evolução do Formato")
-        # Stacked Area
+        
+        # Cálculo de porcentagem
         df_dur = df_filtered.groupby(['decade', 'duration_class']).size().reset_index(name='count')
         df_dur['pct'] = df_dur['count'] / df_dur.groupby('decade')['count'].transform('sum')
-        fig_stack = px.area(df_dur, x='decade', y='pct', color='duration_class',
-                            category_orders={'duration_class': order},
-                            color_discrete_sequence=px.colors.sequential.Plasma,
-                            template=THEME_PLOTLY, height=400)
+
+        fig_stack = px.area(
+            df_dur, x='decade', y='pct',
+            color='duration_class',
+            category_orders={'duration_class': order},
+            color_discrete_map=color_map,
+            template=THEME_PLOTLY, height=400
+        )
         st.plotly_chart(fig_stack, use_container_width=True)
 
     with row1_2:
-        st.subheader("2. Engajamento por Duração")
-        # Bar chart de votos médios
+        st.subheader("2. Engajamento (Votos)")
+
         df_eng = df_filtered.groupby('duration_class')['numVotes'].mean().reset_index()
-        fig_eng = px.bar(df_eng, x='duration_class', y='numVotes', color='numVotes',
-                         category_orders={'duration_class': order},
-                         title="Média de Votos por Categoria",
-                         color_continuous_scale='Viridis', template=THEME_PLOTLY, height=400)
+
+        fig_eng = px.bar(
+            df_eng, x='duration_class', y='numVotes',
+            color='duration_class',
+            category_orders={'duration_class': order},
+            color_discrete_map=color_map,
+            title="Média de Votos por Categoria",
+            template=THEME_PLOTLY, height=400
+        )
         st.plotly_chart(fig_eng, use_container_width=True)
-    
-    st.subheader("3. Dispersão: Duração vs Nota")
-    fig_scatter = px.scatter(df_filtered.sample(min(2000, len(df_filtered))), # Sample para não pesar
-                             x='runtimeMinutes', y='averageRating', color='genre',
-                             opacity=0.6, template=THEME_PLOTLY, height=400,
-                             title="Amostra de 2.000 filmes (Scatter)")
+
+    # ------------------------
+    # 2.5 Nota Média (Violino)
+    # ------------------------
+    st.subheader("2.5 Distribuição de Notas (Violin Plot)")
+
+    fig_rating_dur = px.violin(
+        df_filtered, 
+        x='duration_class', 
+        y='averageRating',
+        color='duration_class',
+        category_orders={'duration_class': order},
+        color_discrete_map=color_map,
+        box=True,         
+        points=False,     
+        title="Densidade das Notas por Duração",
+        template=THEME_PLOTLY,
+        height=400
+    )
+    st.plotly_chart(fig_rating_dur, use_container_width=True)
+
+    # ------------------------
+    # 3. Scatter (Duração vs Nota)
+    # ------------------------
+    st.subheader("3. Dispersão Detalhada")
+
+    # Amostragem para performance
+    fig_scatter = px.scatter(
+        df_filtered.sample(min(2000, len(df_filtered))),
+        x='runtimeMinutes', 
+        y='averageRating', 
+        color='genre', 
+        opacity=0.6,
+        template=THEME_PLOTLY,
+        height=400,
+        title="Amostra de 2.000 filmes"
+    )
     fig_scatter.update_layout(xaxis_range=[60, 200])
     st.plotly_chart(fig_scatter, use_container_width=True)
 
@@ -291,7 +484,6 @@ with tab4:
         
     with geo2:
         st.markdown("#### Comparativo Macro")
-        # Bar Chart US vs World
         df_macro = df_filtered.groupby(['decade', 'macro_region'])['averageRating'].mean().reset_index()
         fig_macro = px.bar(df_macro, x='decade', y='averageRating', color='macro_region',
                            barmode='group', template=THEME_PLOTLY, height=500,
@@ -299,7 +491,6 @@ with tab4:
         fig_macro.update_yaxes(range=[5, 8])
         st.plotly_chart(fig_macro, use_container_width=True)
 
-# === ABA 5: HALL DA FAMA ===
 with tab5:
     col_sel1, col_sel2, col_sel3 = st.columns(3)
     with col_sel1: role = st.selectbox("Cargo", ["director", "actor", "actress"])
