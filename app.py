@@ -137,13 +137,18 @@ selected_genres_pt = [genre_translation.get(g, g) for g in selected_genres]
 # --- 4. CABEÇALHO ---
 st.title(f"📊 Dashboard de Filmes utilizando o dataset IMDb ({year_range[0]}-{year_range[1]})")
 
+df_unique_movies = df_filtered.drop_duplicates(subset='tconst')
+
 # KPIs Globais
 k1, k2, k3, k4, k5 = st.columns(5)
-k1.metric("Produções", f"{df_filtered['tconst'].nunique():,}")
-k2.metric("Nota Média", f"{df_filtered['averageRating'].mean():.2f}")
-k3.metric("Votos Totais", f"{(df_filtered['numVotes'].sum()/1000000):.1f}M")
-k4.metric("Duração Média", f"{int(df_filtered['runtimeMinutes'].mean())} min")
-k5.metric("Melhor Ano (Nota)", int(df_filtered.groupby('startYear')['averageRating'].mean().idxmax()))
+k1.metric("Produções", f"{df_unique_movies['tconst'].count():,}")
+k2.metric("Nota Média", f"{df_unique_movies['averageRating'].mean():.2f}")
+k3.metric("Votos Totais", f"{(df_unique_movies['numVotes'].sum()/1000000):.1f}M") # Agora soma corretamente
+k4.metric("Duração Média", f"{int(df_unique_movies['runtimeMinutes'].mean())} min")
+
+# Para o "Melhor Ano", mantemos a lógica original ou ajustamos também:
+best_year = df_unique_movies.groupby('startYear')['averageRating'].mean().idxmax()
+k5.metric("Melhor Ano (Nota)", int(best_year))
 
 st.markdown("---")
 
