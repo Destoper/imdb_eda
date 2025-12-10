@@ -149,13 +149,13 @@ st.markdown("---")
 
 # --- 5. NAVEGAÇÃO ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Evolução Temporal", "🎭 Gêneros", "⏱️ Análise de Duração", "🌍 Mapa Mundi", "🌟 Hall da Fama"
+    " 📈 Evolução Temporal ", " 🎭 Gêneros ", " ⏱️ Análise de Duração ", " 🌍 Mapa Mundi ", " 🌟 Hall da Fama "
 ])
 
 
 # === ABA 1: EVOLUÇÃO TEMPORAL ===
 with tab1:
-    st.subheader("êneros Mais Populares ao Longo das écadas")
+    st.subheader("Gêneros Mais Populares ao Longo das Décadas")
     st.caption("Comparando a evolução por quantidade de filmes vs qualidade média.")
 
     col_pop, col_qual = st.columns(2)
@@ -206,7 +206,7 @@ with tab1:
         # Linha dupla
         df_year = df_filtered.groupby('startYear').agg({'averageRating':'mean', 'tconst':'count'}).reset_index()
         fig_dual = go.Figure()
-        fig_dual.add_trace(go.Bar(x=df_year['startYear'], y=df_year['tconst'], name='Qtd Filmes', marker_color='#333'))
+        fig_dual.add_trace(go.Bar(x=df_year['startYear'], y=df_year['tconst'], name='Quantidade de Produções', marker_color='#333'))
         fig_dual.add_trace(go.Scatter(x=df_year['startYear'], y=df_year['averageRating'], name='Nota Média', yaxis='y2', line=dict(color=COLOR_ACCENT, width=3)))
         fig_dual.update_layout(template=THEME_PLOTLY, yaxis2=dict(overlaying='y', side='right', range=[5,8]), height=400, showlegend=True, legend=dict(orientation="h", y=1.1))
         st.plotly_chart(fig_dual, use_container_width=True)
