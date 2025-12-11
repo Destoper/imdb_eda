@@ -532,7 +532,7 @@ with tab4:
             else:
                 fig_macro = px.bar(df_macro_grouped, x='decade', y='averageRating', color='macro_region',
                                    barmode='group', template=THEME_PLOTLY, height=500,
-                                   color_discrete_map={'Hollywood/UK': '#3b5998', 'World Cinema': COLOR_ACCENT})
+                                   color_discrete_map={'Hollywood/UK': "#ca5823", 'World Cinema': COLOR_ACCENT})
                 fig_macro.update_yaxes(range=[5, 8])
                 st.plotly_chart(fig_macro, use_container_width=True)
 
