@@ -206,7 +206,7 @@ with tab1:
         fig_dual.update_layout(
             template=THEME_PLOTLY, height=400, showlegend=True, legend=dict(orientation="h", y=1.1),
             yaxis=dict(title=dict(text="Qtd. Produções", font=dict(color="#888")), tickfont=dict(color="#888")),
-            yaxis2=dict(title=dict(text="Nota IMDb", font=dict(color=COLOR_ACCENT)), tickfont=dict(color=COLOR_ACCENT), anchor="x", overlaying="y", side="right", range=[5, 8.5])
+            yaxis2=dict(title=dict(text="Nota IMDb", font=dict(color=COLOR_ACCENT)), tickfont=dict(color=COLOR_ACCENT), anchor="x", overlaying="y", side="right", range=[4, 8.5])
         )
         st.plotly_chart(fig_dual, use_container_width=True)
 
