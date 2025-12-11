@@ -75,7 +75,7 @@ def load_data():
 try:
     df, df_crew = load_data()
 except FileNotFoundError:
-    st.error("⚠️ Faltam arquivos CSV. Rode o ETL v4.0 e salve como 'imdb_movies_final.csv' e 'imdb_crew_profiles.csv'.")
+    st.error("⚠️ Faltam arquivos CSV.")
     st.stop()
 
 with st.sidebar:
