@@ -65,8 +65,8 @@ st.markdown(f"""
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv('imdb_movies_final2.csv')
-    crew = pd.read_csv('imdb_crew_profiles2.csv')
+    df = pd.read_csv('imdb_movies_final.csv')
+    crew = pd.read_csv('imdb_crew_profiles.csv')
     
     df = df.dropna(subset=['genre'])
     
