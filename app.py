@@ -68,7 +68,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CARREGAMENTO DE DADOS ---
+# --- 2. CARREGAMENTO E LIMPEZA DE DADOS ---
 @st.cache_data
 def load_data():
     df = pd.read_csv('imdb_movies_final.csv')
@@ -80,6 +80,26 @@ try:
 except FileNotFoundError:
     st.error("⚠️ Faltam arquivos CSV na pasta.")
     st.stop()
+
+# --- 2.1 LIMPEZA E ENGENHARIA DE DADOS (CORREÇÃO DO BUG) ---
+# Forçamos a limpeza da coluna 'region' para garantir que nulos sejam tratados corretamente
+def clean_region_column(val):
+    if pd.isna(val) or str(val).strip() == '\\N' or str(val).lower() == 'nan' or str(val).lower() == 'unknown':
+        return None
+    return str(val)
+
+df['region'] = df['region'].apply(clean_region_column)
+
+# Recriamos a Macro Região agora que a região está limpa
+def classify_macro(reg):
+    if reg is None: return None
+    # Lista expandida de códigos para garantir que pegue tudo
+    if reg in ['US', 'USA', 'GB', 'UK', 'United States', 'Great Britain']: 
+        return 'Hollywood/UK'
+    return 'World Cinema'
+
+df['macro_region'] = df['region'].apply(classify_macro)
+
 
 # --- 3. SIDEBAR ---
 with st.sidebar:
@@ -232,28 +252,14 @@ with tab1:
             line=dict(color=COLOR_ACCENT, width=3)
         ))
         
-        # Layout Corrigido (Sintaxe Robusta)
+        # Layout Corrigido
         fig_dual.update_layout(
             template=THEME_PLOTLY,
             height=400,
             showlegend=True,
             legend=dict(orientation="h", y=1.1),
-            
-            # Eixo Y1 (Esquerda)
-            yaxis=dict(
-                title=dict(text="Qtd. Produções", font=dict(color="#888")),
-                tickfont=dict(color="#888")
-            ),
-            
-            # Eixo Y2 (Direita)
-            yaxis2=dict(
-                title=dict(text="Nota IMDb", font=dict(color=COLOR_ACCENT)),
-                tickfont=dict(color=COLOR_ACCENT),
-                anchor="x",
-                overlaying="y",
-                side="right",
-                range=[5, 8.5]
-            )
+            yaxis=dict(title=dict(text="Qtd. Produções", font=dict(color="#888")), tickfont=dict(color="#888")),
+            yaxis2=dict(title=dict(text="Nota IMDb", font=dict(color=COLOR_ACCENT)), tickfont=dict(color=COLOR_ACCENT), anchor="x", overlaying="y", side="right", range=[5, 8.5])
         )
         
         st.plotly_chart(fig_dual, use_container_width=True)
@@ -284,10 +290,8 @@ with tab1:
 
     # 2. Função de Filtro Dinâmica
     def get_winner(decade, role, genre_list_pt, sort_by):
-        # Filtra pessoas da década e função
         candidates = df_crew[(df_crew['decade'] == decade) & (df_crew['category'] == role)].copy()
         
-        # Filtra: O "Top Movie" TEM que ter um dos gêneros selecionados (em PT)
         def has_genre(movie_title):
             m_genres = movie_genre_map.get(movie_title, [])
             return not set(m_genres).isdisjoint(genre_list_pt)
@@ -302,7 +306,6 @@ with tab1:
     active_decades = sorted(df_filtered['decade'].unique(), reverse=True)
 
     for dec in active_decades:
-        # Busca vencedores com o critério escolhido (sort_col)
         winner_dir = get_winner(dec, 'director', selected_genres_pt, sort_col)
         winner_act = get_winner(dec, 'actor', selected_genres_pt, sort_col)
         winner_actress = get_winner(dec, 'actress', selected_genres_pt, sort_col)
@@ -315,15 +318,11 @@ with tab1:
             def draw_card(col, row, role_icon, role_name):
                 with col:
                     if row is not None:
-                        # Busca gêneros reais
                         genres_real = movie_genre_map.get(row['top_movie_title'], ["N/A"])
                         genres_str = " • ".join(genres_real[:2])
+                        color_vote = "#f5c518" if "Votos" in ranking_metric else "#ddd"
+                        color_rate = "#f5c518" if "Nota" in ranking_metric else "#ddd"
                         
-                        # Cores dinâmicas para destacar o vencedor
-                        color_vote = "#f5c518" if "Votos" in ranking_metric else "#ddd" # Amarelo se for Votos
-                        color_rate = "#f5c518" if "Nota" in ranking_metric else "#ddd"  # Amarelo se for Nota
-                        
-                        # Card HTML
                         st.markdown(f"""
                         <div style="background-color: #1f2129; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);">
                             <div style="color: #888; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px;">
@@ -360,14 +359,12 @@ with tab1:
 # === ABA 2: RAIO-X GÊNEROS ===
 with tab2:
     st.info("ℹ️ **Nota de Análise:** Nesta aba, filmes com múltiplos gêneros (ex: 'Ação, Sci-Fi') são contabilizados em todas as suas categorias correspondentes. Isso permite analisar a força individual de cada gênero.")
-    # Preparar dados agregados por Gênero
     genre_stats = df_filtered.groupby('genre').agg(
         count=('tconst', 'nunique'),
         rating=('averageRating', 'mean'),
         votes=('numVotes', 'mean')
     ).reset_index()
 
-    # --- BLOCO 1 ---
     st.subheader(" Popularidade vs Prestígio")
     st.caption("Onde cada gênero se posiciona? Tamanho da bolha representa o Volume de Produção")
 
@@ -386,7 +383,6 @@ with tab2:
 
     st.plotly_chart(fig_bubble, use_container_width=True)
 
-    # --- BLOCO 2 ---
     st.subheader("Evolução da Producao por Gênero ao Longo do Tempo")
     df_genre_year = df_filtered.groupby(['genre', 'decade']).size().reset_index(name='count')
 
@@ -401,7 +397,6 @@ with tab2:
 
     st.plotly_chart(fig_sm, use_container_width=True)
 
-    # Tabela
     with st.expander("Ver Dados Detalhados por Gênero"):
         st.dataframe(
             genre_stats.sort_values(by='count', ascending=False)
@@ -430,15 +425,11 @@ with tab3:
         'Épico (>150m)': palette[7]
     }
 
-    # ------------------------
-    # 1º LINHA: Evolução + Engajamento
-    # ------------------------
     row1_1, row1_2 = st.columns(2)
 
     with row1_1:
         st.subheader("Evolução do Formato")
         
-        # Cálculo de porcentagem
         df_dur = df_filtered.groupby(['decade', 'duration_class']).size().reset_index(name='count')
         df_dur['pct'] = df_dur['count'] / df_dur.groupby('decade')['count'].transform('sum')
 
@@ -466,9 +457,6 @@ with tab3:
         )
         st.plotly_chart(fig_eng, use_container_width=True)
 
-    # ------------------------
-    # 2.5 Nota Média (Violino)
-    # ------------------------
     st.subheader("Distribuição de Notas por Duração")
 
     fig_rating_dur = px.violin(
@@ -486,12 +474,8 @@ with tab3:
     )
     st.plotly_chart(fig_rating_dur, use_container_width=True)
 
-    # ------------------------
-    # Scatter (Duração vs Nota)
-    # ------------------------
     st.subheader("Dispersão Detalhada")
 
-    # Amostragem para performance
     fig_scatter = px.scatter(
         df_filtered.sample(min(2000, len(df_filtered))),
         x='runtimeMinutes', 
@@ -505,32 +489,52 @@ with tab3:
     fig_scatter.update_layout(xaxis_range=[60, 200])
     st.plotly_chart(fig_scatter, use_container_width=True)
 
-# === ABA 4: GEOGRAFIA ===
+# === ABA 4: GEOGRAFIA (CORRIGIDA) ===
 with tab4:
     st.subheader("Análise Geográfica")
     
-    geo1, geo2 = st.columns([2, 1])
+    # 1. Filtro de Segurança: Remover nulos da região
+    df_geo_clean = df_filtered.dropna(subset=['region'])
     
-    with geo1:
-        st.markdown("#### Top Países (Fora US/UK)")
-        # Treemap de Países
-        df_world = df_filtered[~df_filtered['region'].isin(['US', 'GB', 'UK', '\\N', 'Unknown'])]
-        country_counts = df_world['region'].value_counts().reset_index(name='count')
-        country_counts.columns = ['region', 'count']
+    if df_geo_clean.empty:
+        st.warning("⚠️ Não há dados geográficos suficientes para o filtro atual.")
+    else:
+        geo1, geo2 = st.columns([2, 1])
         
-        fig_tree = px.treemap(country_counts.head(20), path=['region'], values='count',
-                              color='count', color_continuous_scale='Magma',
-                              template=THEME_PLOTLY, height=500)
-        st.plotly_chart(fig_tree, use_container_width=True)
-        
-    with geo2:
-        st.markdown("#### Comparativo Macro")
-        df_macro = df_filtered.groupby(['decade', 'macro_region'])['averageRating'].mean().reset_index()
-        fig_macro = px.bar(df_macro, x='decade', y='averageRating', color='macro_region',
-                           barmode='group', template=THEME_PLOTLY, height=500,
-                           color_discrete_map={'Hollywood/UK': '#3b5998', 'World Cinema': COLOR_ACCENT})
-        fig_macro.update_yaxes(range=[5, 8])
-        st.plotly_chart(fig_macro, use_container_width=True)
+        # TREEMAP (Esquerda)
+        with geo1:
+            st.markdown("#### Top Países (Fora US/UK)")
+            # Filtra apenas o que NÃO É Hollywood/UK
+            # Atenção: Estamos filtrando pela coluna 'region' usando a lista de códigos
+            df_world = df_geo_clean[~df_geo_clean['region'].isin(['US', 'GB', 'UK', 'USA'])]
+            
+            if df_world.empty:
+                st.info("Nenhum filme internacional encontrado neste recorte.")
+            else:
+                country_counts = df_world['region'].value_counts().reset_index(name='count')
+                country_counts.columns = ['region', 'count']
+                
+                fig_tree = px.treemap(country_counts.head(20), path=['region'], values='count',
+                                      color='count', color_continuous_scale='Magma',
+                                      template=THEME_PLOTLY, height=500)
+                st.plotly_chart(fig_tree, use_container_width=True)
+            
+        # BAR CHART (Direita)
+        with geo2:
+            st.markdown("#### Comparativo Macro")
+            # Aqui usamos a 'macro_region' que criamos lá em cima
+            # Importante: dropna para garantir que não plotamos 'None'
+            df_macro = df_geo_clean.dropna(subset=['macro_region'])
+            df_macro_grouped = df_macro.groupby(['decade', 'macro_region'])['averageRating'].mean().reset_index()
+            
+            if df_macro_grouped.empty:
+                st.info("Dados insuficientes para o comparativo.")
+            else:
+                fig_macro = px.bar(df_macro_grouped, x='decade', y='averageRating', color='macro_region',
+                                   barmode='group', template=THEME_PLOTLY, height=500,
+                                   color_discrete_map={'Hollywood/UK': '#3b5998', 'World Cinema': COLOR_ACCENT})
+                fig_macro.update_yaxes(range=[5, 8])
+                st.plotly_chart(fig_macro, use_container_width=True)
 
 # === ABA 5: HALL DA FAMA ===
 with tab5:
