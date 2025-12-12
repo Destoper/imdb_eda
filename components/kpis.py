@@ -1,7 +1,7 @@
 import streamlit as st
 
 def render_kpis(df_filtered, year_range):
-    st.title(f"📊 Dashboard de Cinema ({year_range[0]}-{year_range[1]})")
+    st.title(f"📊 Dashboard de Cinema IMDb ({year_range[0]}-{year_range[1]})")
 
     df_unique_movies = df_filtered.drop_duplicates(subset='tconst')
 
