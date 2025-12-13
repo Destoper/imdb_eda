@@ -7,7 +7,7 @@ def render_sidebar(df):
         st.markdown("---")
 
         min_year, max_year = int(df['startYear'].min()), int(df['startYear'].max())
-        year_range = st.slider("📅 Período de Análise", min_year, max_year, (1960, 2025))
+        year_range = st.slider("📅 Período de Análise", min_year, max_year, (1920, 2025))
 
         all_genres = sorted(df['genre'].unique())
         

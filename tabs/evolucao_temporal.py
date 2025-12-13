@@ -1,6 +1,7 @@
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
 from config import COLOR_ACCENT, THEME_PLOTLY
 
 def render_evolucao_temporal(df_filtered, df_crew, selected_genres, df):
@@ -76,17 +77,29 @@ def render_galeria_icones(df_filtered, df_crew, selected_genres, df):
     sort_col = 'total_votes' if "Votos" in ranking_metric else 'mean_rating'
     
     df_temp_map = df.copy()
-    df_temp_map_grouped = df_temp_map.groupby('primaryTitle')['genre'].apply(list).reset_index()
-    movie_genre_map = df_temp_map_grouped.set_index('primaryTitle')['genre'].to_dict()
+    df_temp_map['startYear'] = pd.to_numeric(df_temp_map['startYear'], errors='coerce').fillna(0).astype(int)
+    df_temp_map_grouped = df_temp_map.groupby(['primaryTitle', 'startYear'])['genre'].apply(list).reset_index()
+    
+    movie_genre_map = df_temp_map_grouped.set_index(['primaryTitle', 'startYear'])['genre'].to_dict()
 
     def get_winner(decade, role, genre_list_pt, sort_by):
         candidates = df_crew[(df_crew['decade'] == decade) & (df_crew['category'] == role)].copy()
         
-        def has_genre(movie_title):
-            m_genres = movie_genre_map.get(movie_title, [])
+        def has_genre(row):
+            title = row['top_movie_title']
+            try:
+                year = int(row['top_movie_year'])
+            except:
+                year = 0
+        
+            m_genres = movie_genre_map.get((title, year), [])
+            
+            if not m_genres:
+                return False 
+
             return not set(m_genres).isdisjoint(genre_list_pt)
         
-        candidates = candidates[candidates['top_movie_title'].apply(has_genre)]
+        candidates = candidates[candidates.apply(has_genre, axis=1)]
         
         if not candidates.empty:
             return candidates.sort_values(by=sort_by, ascending=False).iloc[0]
@@ -103,16 +116,24 @@ def render_galeria_icones(df_filtered, df_crew, selected_genres, df):
             st.markdown(f"### 🗓️ Década de {dec}")
             c1, c2, c3 = st.columns(3)
             
+            
             draw_card(c1, winner_dir, "🎥", "Direção", ranking_metric, movie_genre_map)
-            draw_card(c2, winner_act, "🕴️", "Ator", ranking_metric, movie_genre_map)
-            draw_card(c3, winner_actress, "💃", "Atriz", ranking_metric, movie_genre_map)
+            draw_card(c2, winner_act, "🤵🏿‍♂️", "Ator", ranking_metric, movie_genre_map)
+            draw_card(c3, winner_actress, "🤵‍♀️", "Atriz", ranking_metric, movie_genre_map)
             st.divider()
 
+# --- ATUALIZAR TAMBÉM A FUNÇÃO DRAW_CARD ---
 def draw_card(col, row, role_icon, role_name, ranking_metric, movie_genre_map):
     with col:
         if row is not None:
-            genres_real = movie_genre_map.get(row['top_movie_title'], ["N/A"])
-            genres_str = " • ".join(genres_real[:2])
+            # Recupera Título e Ano para buscar os gêneros corretos para exibir
+            title = row['top_movie_title']
+            try: year = int(row['top_movie_year'])
+            except: year = 0
+            
+            # Busca com chave composta
+            genres_real = movie_genre_map.get((title, year), ["Gênero N/A"])
+            genres_str = " • ".join(genres_real)
             
             color_vote = "#f5c518" if "Votos" in ranking_metric else "#ddd"
             color_rate = "#f5c518" if "Nota" in ranking_metric else "#ddd"
