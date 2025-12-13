@@ -129,7 +129,6 @@ def draw_card(col, row, role_icon, role_name, ranking_metric, movie_genre_map):
             try: year = int(row['top_movie_year'])
             except: year = 0
             
-            # Busca com chave composta
             genres_real = movie_genre_map.get((title, year), ["Gênero N/A"])
             genres_str = " • ".join(genres_real)
             
