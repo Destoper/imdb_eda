@@ -122,11 +122,9 @@ def render_galeria_icones(df_filtered, df_crew, selected_genres, df):
             draw_card(c3, winner_actress, "🤵‍♀️", "Atriz", ranking_metric, movie_genre_map)
             st.divider()
 
-# --- ATUALIZAR TAMBÉM A FUNÇÃO DRAW_CARD ---
 def draw_card(col, row, role_icon, role_name, ranking_metric, movie_genre_map):
     with col:
         if row is not None:
-            # Recupera Título e Ano para buscar os gêneros corretos para exibir
             title = row['top_movie_title']
             try: year = int(row['top_movie_year'])
             except: year = 0
