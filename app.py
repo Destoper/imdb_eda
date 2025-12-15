@@ -40,7 +40,7 @@ render_kpis(df_filtered, year_range)
 st.markdown("---")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    " 📈 Evolução Temporal ", 
+    " 🎞️ Visão Geral ", 
     " 🎭 Análise por Gênero ", 
     " ⏱️ Duração & Formato ", 
     " 🌍 Mercado Global ", 
